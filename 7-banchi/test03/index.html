@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ルート案内（コクーンタワー）</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; }
+    form { background: #f0f0f0; padding: 1.5em; border-radius: 10px; width: 400px; }
+    label { margin-top: 1em; display: block; }
+    select, input[type="time"] { width: 100%; margin-top: 0.5em; padding: 0.5em; }
+    button { margin-top: 1.5em; padding: 0.5em 1em; }
+  </style>
+</head>
+<body>
+  <h1>ルート案内：ロビーと教室の移動</h1>
+
+  <form action="route.php" method="post">
+    <label for="departure">出発地</label>
+    <select name="departure" id="departure"></select>
+
+    <label for="destination">目的地</label>
+    <select name="destination" id="destination"></select>
+
+    <label for="departure_time">出発時刻</label>
+    <input type="time" name="departure_time" id="departure_time" required>
+
+    <button type="submit">検索</button>
+  </form>
+
+  <script>
+    const departureSelect = document.getElementById("departure");
+    const destinationSelect = document.getElementById("destination");
+
+    const lobbyOption = { value: "ロビー", label: "ロビー" };
+    const classrooms = [
+      { value: "教室204", label: "教室204（月）" },
+      { value: "教室199", label: "教室199（火）" },
+      { value: "教室191", label: "教室191（水）" },
+      { value: "教室197", label: "教室197（木）" },
+      { value: "教室294", label: "教室294（金）" }
+    ];
+
+    const defaultClassroomForDay = {
+      1: "教室204",
+      2: "教室199",
+      3: "教室191",
+      4: "教室197",
+      5: "教室294"
+    };
+
+    function setAllOptions(select) {
+      select.innerHTML = "";
+      const lobbyOpt = document.createElement("option");
+      lobbyOpt.value = lobbyOption.value;
+      lobbyOpt.textContent = lobbyOption.label;
+      select.appendChild(lobbyOpt);
+      classrooms.forEach(cls => {
+        const opt = document.createElement("option");
+        opt.value = cls.value;
+        opt.textContent = cls.label;
+        select.appendChild(opt);
+      });
+    }
+
+    function isClassroom(value) {
+      return classrooms.some(c => c.value === value);
+    }
+
+    let adjusting = false;
+
+    function syncFromDeparture() {
+      if (adjusting) return;
+      adjusting = true;
+
+      const departure = departureSelect.value;
+      const destination = destinationSelect.value;
+
+      if (departure === "ロビー") {
+        if (destination === "ロビー") {
+          const today = new Date();
+          const day = today.getDay();
+          destinationSelect.value = defaultClassroomForDay[day] || "教室204";
+        }
+      } else {
+        if (destination !== "ロビー") {
+          destinationSelect.value = "ロビー";
+        }
+      }
+
+      adjusting = false;
+    }
+
+    function syncFromDestination() {
+      if (adjusting) return;
+      adjusting = true;
+
+      const destination = destinationSelect.value;
+      const departure = departureSelect.value;
+
+      if (destination === "ロビー") {
+        if (departure === "ロビー") {
+          const today = new Date();
+          const day = today.getDay();
+          departureSelect.value = defaultClassroomForDay[day] || "教室204";
+        }
+      } else if (isClassroom(destination)) {
+        if (departure !== "ロビー") {
+          departureSelect.value = "ロビー";
+        }
+      }
+
+      adjusting = false;
+    }
+
+    function init() {
+      setAllOptions(departureSelect);
+      setAllOptions(destinationSelect);
+
+      const now = new Date();
+      const hour = now.getHours();
+      const day = now.getDay();
+
+      // 15時以前は ロビー→教室、15時以降は 教室→ロビー をデフォルトに
+      if (hour < 15) {
+        departureSelect.value = "ロビー";
+        destinationSelect.value = defaultClassroomForDay[day] || "教室204";
+      } else {
+        departureSelect.value = defaultClassroomForDay[day] || "教室204";
+        destinationSelect.value = "ロビー";
+      }
+
+      // 出発時刻も現在時刻セット
+      const h = String(now.getHours()).padStart(2, "0");
+      const m = String(now.getMinutes()).padStart(2, "0");
+      document.getElementById("departure_time").value = `${h}:${m}`;
+
+      syncFromDeparture();
+      syncFromDestination();
+    }
+
+    departureSelect.addEventListener("change", () => {
+      syncFromDeparture();
+    });
+
+    destinationSelect.addEventListener("change", () => {
+      syncFromDestination();
+    });
+
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
